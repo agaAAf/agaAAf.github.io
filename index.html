@@ -2,316 +2,281 @@
 <html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
 <head>
 	<meta charset='utf-8' />
-	<meta name='viewport' content='width=device-width, user-scalable=no' />
+	<meta name='viewport' content='width=device-width, initial-scale=1.0, user-scalable=no' />
 	<title>yksgame</title>
 	<style type='text/css'>
-
 		html, body {
-			margin: 0;
-			padding: 0;
-			height: 100%;
-			width: 100%;
-			background-color: black;
-			overflow: hidden; /* prevent scrollbars */
+			margin: 0; padding: 0;
+			height: 100%; width: 100%;
+			background-color: black; overflow: hidden;
+			-webkit-touch-callout: none; -webkit-user-select: none;
+			-ms-touch-action: manipulation; touch-action: manipulation;
 		}
 
+		/* background behind canvas */
 		#bg {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
+			position: fixed; top:0; left:0;
+			width:100%; height:100%;
 			background: url("back2.png") no-repeat center center;
 			background-size: auto 100%;
 			image-rendering: pixelated;
-			z-index: 0; /* behind everything */
+			z-index: 0;
+		}
+
+		/* when simulated fullscreen is active (iOS fallback), canvas is fixed to viewport */
+		body.sim-fullscreen #bg { display:none; }
+		body.sim-fullscreen #canvas {
+			position: fixed !important; top:0; left:0;
+			width: 100vw !important; height: 100vh !important;
 		}
 
 		#canvas {
-			display: block;
-			margin: 0;
-			color: white;
-			position: relative;
-			z-index: 1; /* above background */
+			display:block; margin:0; color:white;
+			position: relative; z-index:1;
+			width:100%; height:100%;
+			object-fit: contain; touch-action: none;
+			-webkit-tap-highlight-color: transparent;
 		}
 
-		#canvas:focus {
-			outline: none;
+		#start-overlay {
+			position: fixed; top:0; left:0; width:100%; height:100%;
+			background: rgba(0,0,0,0.6); color: #fff;
+			display: flex; align-items: center; justify-content: center;
+			font-family: 'Noto Sans', Arial, sans-serif; font-size: 1.6rem;
+			text-align:center; z-index:9999; user-select:none;
 		}
 
-		.godot {
-			font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-			color: #e0e0e0;
-			background-color: #3b3943;
-			background-image: linear-gradient(to bottom, #403e48, #35333c);
-			border: 1px solid #45434e;
-			box-shadow: 0 0 1px 1px #2f2d35;
-		}
+		.godot { font-family:'Noto Sans', 'Droid Sans', Arial, sans-serif; color:#e0e0e0; }
 
-		/* Status display */
-		#status {
-			position: absolute;
-			left: 0;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			visibility: hidden;
-		}
-
-		#status-progress {
-			width: 366px;
-			height: 7px;
-			background-color: #111;
-			border: 1px solid #444;
-			padding: 1px;
-			box-shadow: 0 0 8px #39ff14;
-			border-radius: 4px;
-			position: absolute;
-			bottom: 50px;
-			left: 50%;
-			transform: translateX(-50%);
-			visibility: visible;
-		}
-
-		@media only screen and (orientation:portrait) {
-			#status-progress {
-				width: 61.8%;
-			}
-		}
-
-		#status-progress-inner {
-			height: 100%;
-			width: 0;
-			box-sizing: border-box;
-			transition: width 0.5s linear;
-			background-color: #39ff14;
-			box-shadow: 0 0 10px #39ff14;
-			border-radius: 3px;
-		}
-
-		#status-indeterminate {
-			height: 42px;
-			visibility: visible;
-			position: relative;
-		}
-
-		#status-indeterminate > div {
-			width: 4.5px;
-			height: 0;
-			border-style: solid;
-			border-width: 9px 3px 0 3px;
-			border-color: #2b2b2b transparent transparent transparent;
-			transform-origin: center 21px;
-			position: absolute;
-		}
-
-		#status-indeterminate > div:nth-child(1) { transform: rotate( 22.5deg); }
-		#status-indeterminate > div:nth-child(2) { transform: rotate( 67.5deg); }
-		#status-indeterminate > div:nth-child(3) { transform: rotate(112.5deg); }
-		#status-indeterminate > div:nth-child(4) { transform: rotate(157.5deg); }
-		#status-indeterminate > div:nth-child(5) { transform: rotate(202.5deg); }
-		#status-indeterminate > div:nth-child(6) { transform: rotate(247.5deg); }
-		#status-indeterminate > div:nth-child(7) { transform: rotate(292.5deg); }
-		#status-indeterminate > div:nth-child(8) { transform: rotate(337.5deg); }
-
-		#status-notice {
-			margin: 0 100px;
-			line-height: 1.3;
-			visibility: visible;
-			padding: 4px 6px;
-		}
-
+		#status { position:absolute; left:0; top:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; visibility:hidden; }
+		#status-progress { width:366px; height:7px; background:#111; border:1px solid #444; padding:1px; box-shadow:0 0 8px #39ff14; border-radius:4px; position:absolute; bottom:50px; left:50%; transform:translateX(-50%); visibility:visible; }
+		@media only screen and (orientation:portrait) { #status-progress { width:61.8%; } }
+		#status-progress-inner { height:100%; width:0; box-sizing:border-box; transition: width .5s linear; background:#39ff14; box-shadow:0 0 10px #39ff14; border-radius:3px; }
+		#status-indeterminate { height:42px; visibility:visible; position:relative; }
+		#status-notice { margin:0 100px; line-height:1.3; padding:4px 6px; visibility:visible; }
 	</style>
-<link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
-<link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
-
+	<link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
+	<link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
 </head>
 <body>
-	<div id="bg"></div>
-	<canvas id='canvas'>
-		HTML5 canvas appears to be unsupported in the current browser.<br />
-		Please try updating or use a different browser.
+	<div id="bg" aria-hidden="true"></div>
+	<canvas id='canvas' tabindex="0">
+		HTML5 canvas appears to be unsupported in the current browser.<br/>Please try updating or use a different browser.
 	</canvas>
+
 	<div id='status'>
-		<div id='status-progress' style='display: none;' oncontextmenu='event.preventDefault();'>
-			<div id ='status-progress-inner'></div>
-		</div>
-		<div id='status-indeterminate' style='display: none;' oncontextmenu='event.preventDefault();'>
-			<div></div><div></div><div></div><div></div>
-			<div></div><div></div><div></div><div></div>
-		</div>
-		<div id='status-notice' class='godot' style='display: none;'></div>
-	</div>
-	<!-- Add this overlay div in your <body> -->
-	<div id="start-overlay" style="
-		position: fixed;
-		top: 0; left: 0;
-		width: 100%; height: 100%;
-		background: rgba(0,0,0,0.6);
-		color: white;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-family: 'Noto Sans', 'Arial', sans-serif;
-		font-size: 2em;
-		text-align: center;
-		z-index: 9999;
-	">
-		TAP THE SCREEN TWICE TO START THE GAME
+		<div id='status-progress' style='display:none;' oncontextmenu='event.preventDefault();'><div id='status-progress-inner'></div></div>
+		<div id='status-indeterminate' style='display:none;' oncontextmenu='event.preventDefault();'><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+		<div id='status-notice' class='godot' style='display:none;'></div>
 	</div>
 
+	<div id="start-overlay">TAP THE SCREEN TWICE TO START THE GAME</div>
+
 	<script>
-	document.addEventListener('visibilitychange', () => {
-		const audios = document.querySelectorAll('audio, video'); // find all media elements
-		if (document.hidden) {
-			audios.forEach(a => a.muted = true);  // mute all audio/video
-		} else {
-			audios.forEach(a => a.muted = false); // unmute when tab is active
+	// simple mute for native media elements on visibility change
+	(function(){
+		function muteHtmlMedia(mute) {
+			document.querySelectorAll('audio,video').forEach(el => { try { el.muted = mute; } catch(e){} });
 		}
-	});
+		document.addEventListener('visibilitychange', ()=> muteHtmlMedia(document.hidden));
+		window.addEventListener('blur', ()=> muteHtmlMedia(true));
+		window.addEventListener('focus', ()=> muteHtmlMedia(false));
+	})();
 	</script>
 
 	<script type='text/javascript' src='index.js'></script>
 
 	<script type="text/javascript">
 	//<![CDATA[
-	(function() {
+	(function(){
 		const canvas = document.getElementById('canvas');
 		const overlay = document.getElementById('start-overlay');
+		const bg = document.getElementById('bg');
+
 		const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-		async function enterFullscreenAndLandscape() {
-			try {
-				if (canvas.requestFullscreen) await canvas.requestFullscreen();
-				else if (canvas.webkitRequestFullscreen) await canvas.webkitRequestFullscreen();
-
-				if (screen.orientation && screen.orientation.lock) {
-					await screen.orientation.lock('landscape');
-				}
-			} catch (err) {
-				console.warn('Fullscreen or orientation lock failed:', err);
-			}
+		// Simulated fullscreen for iOS / unsupported platforms
+		function simulateFullscreen() {
+			document.body.classList.add('sim-fullscreen');
+			bg.style.display = 'none';
+		}
+		function exitSimulatedFullscreen() {
+			document.body.classList.remove('sim-fullscreen');
+			bg.style.display = '';
 		}
 
-		async function startGameWhenReady() {
-			// Show overlay on mobile
-			if (isMobile) overlay.style.display = 'flex';
+		// Try to perform native fullscreen then orientation lock when supported.
+		// Skip native fullscreen on iOS (unsupported) and use simulated instead.
+		async function tryNativeFullscreenAndLock() {
+			if (isIOS) { // iOS: skip native fullscreen/orientation lock
+				simulateFullscreen();
+				return;
+			}
+			// attempt actual fullscreen on canvas or document element
+			try {
+				if (canvas.requestFullscreen) {
+					// call directly in gesture handler (we won't await here to avoid breaking gesture)
+					canvas.requestFullscreen();
+				} else if (document.documentElement.requestFullscreen) {
+					document.documentElement.requestFullscreen();
+				} else if (canvas.webkitRequestFullscreen) {
+					canvas.webkitRequestFullscreen();
+				} else {
+					// no fullscreen support -> simulate
+					simulateFullscreen();
+				}
+			} catch(e) {
+				// fallback to simulate if requestFullscreen failed
+				simulateFullscreen();
+			}
 
-			// Wait for mobile fullscreen + landscape
-			if (isMobile && !(window.matchMedia("(orientation: landscape)").matches &&
-							  (document.fullscreenElement || document.webkitFullscreenElement))) {
+			// Try to lock orientation if available (may be rejected)
+			try {
+				if (screen.orientation && screen.orientation.lock) {
+					screen.orientation.lock('landscape').catch(()=>{ /* ignore permission failures */ });
+				}
+			} catch(e) { /* ignore */ }
+		}
 
-				const startPromise = new Promise(resolve => {
-					let tapCount = 0;
-
-					function check() {
-						if (window.matchMedia("(orientation: landscape)").matches &&
-							(document.fullscreenElement || document.webkitFullscreenElement)) {
-							document.removeEventListener('click', clickHandler);
-							document.removeEventListener('touchstart', clickHandler);
-							window.removeEventListener('orientationchange', check);
-
-							// Hide overlay
-							overlay.style.display = 'none';
-							resolve();
-						}
-					}
-
-					async function clickHandler() {
-						tapCount++;
-						if (tapCount >= 2) {
-							await enterFullscreenAndLandscape();
-							check();
-						}
-					}
-
-					document.addEventListener('click', clickHandler);
-					document.addEventListener('touchstart', clickHandler);
-					window.addEventListener('orientationchange', check);
-				});
-
-				await startPromise;
+		// Observe fullscreenchange to hide background safely when browser enters fullscreen
+		function onFullScreenChange() {
+			const fs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+			if (fs) {
+				bg.style.display = 'none';
+				document.body.classList.remove('sim-fullscreen'); // if browser actually fullscreen, remove sim
 			} else {
-				// Non-mobile or already fullscreen/landscape
+				// restore background a little after exit to let canvas resize
+				setTimeout(()=>{ bg.style.display = ''; }, 80);
+				document.body.classList.remove('sim-fullscreen');
+			}
+		}
+		document.addEventListener('fullscreenchange', onFullScreenChange);
+		document.addEventListener('webkitfullscreenchange', onFullScreenChange);
+		document.addEventListener('mozfullscreenchange', onFullScreenChange);
+
+		// Double-tap detection (robust) — use touchend for mobile and click fallback
+		function waitForDoubleTapThenStart() {
+			return new Promise(resolve => {
+				if (!isMobile) return resolve(); // desktop: continue immediately
+
+				let lastTap = 0;
+				let resolved = false;
+
+				function cleanup() {
+					document.removeEventListener('touchend', touchHandler);
+					document.removeEventListener('click', clickHandler);
+					window.removeEventListener('orientationchange', orientationHandler);
+				}
+
+				function orientationHandler() {
+					if (window.matchMedia("(orientation: landscape)").matches) {
+						cleanup();
+						overlay.style.display = 'none';
+						resolve();
+						resolved = true;
+					}
+				}
+
+				async function processDoubleTap() {
+					// perform fullscreen+lock (native when possible, simulated on iOS)
+					await tryNativeFullscreenAndLock();
+
+					// if now in landscape + fullscreen OR simulated, proceed
+					const inLandscape = window.matchMedia("(orientation: landscape)").matches;
+					const inFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+					const inSim = document.body.classList.contains('sim-fullscreen');
+
+					if (inLandscape && (inFullscreen || inSim)) {
+						cleanup();
+						overlay.style.display = 'none';
+						resolve();
+						resolved = true;
+					} else {
+						// wait for orientation change / fullscreenchange
+						// overlay stays visible
+					}
+				}
+
+				function touchHandler(e) {
+					const now = Date.now();
+					if (now - lastTap <= 400) {
+						processDoubleTap();
+						lastTap = 0;
+					} else {
+						lastTap = now;
+					}
+				}
+
+				function clickHandler(e) {
+					// fallback for click events (desktop or some mobile browsers)
+					const now = Date.now();
+					if (now - lastTap <= 400) {
+						processDoubleTap();
+						lastTap = 0;
+					} else lastTap = now;
+				}
+
+				document.addEventListener('touchend', touchHandler, {passive:true});
+				document.addEventListener('click', clickHandler, {passive:true});
+				window.addEventListener('orientationchange', orientationHandler, {passive:true});
+			});
+		}
+
+		// Attempt to discover an audio context for WebAudio suspension/resume (after engine loads)
+		let discoveredAudioContext = null;
+		function suspendAudioContext() {
+			try {
+				if (discoveredAudioContext && discoveredAudioContext.state === 'running') discoveredAudioContext.suspend().catch(()=>{});
+				else if (window.Module && Module.audioContext && Module.audioContext.state === 'running') Module.audioContext.suspend().catch(()=>{});
+			} catch(e){}
+		}
+		function resumeAudioContext() {
+			try {
+				if (discoveredAudioContext && discoveredAudioContext.state === 'suspended') discoveredAudioContext.resume().catch(()=>{});
+				else if (window.Module && Module.audioContext && Module.audioContext.state === 'suspended') Module.audioContext.resume().catch(()=>{});
+			} catch(e){}
+		}
+		document.addEventListener('visibilitychange', function(){ if (document.hidden) suspendAudioContext(); else resumeAudioContext(); });
+
+		// MAIN: orchestrate double-tap -> (native or simulated) fullscreen -> start engine
+		async function startGameWhenReady() {
+			if (isMobile) overlay.style.display = 'flex'; else overlay.style.display = 'none';
+
+			// If on mobile and not already in landscape+fullscreen, wait for double tap/orientation
+			const alreadyReady = window.matchMedia("(orientation: landscape)").matches &&
+								 (document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('sim-fullscreen'));
+
+			if (isMobile && !alreadyReady) {
+				await waitForDoubleTapThenStart();
+			} else {
 				overlay.style.display = 'none';
 			}
 
-			// ✅ Safe to start Godot engine
+			// Create and start engine (Engine defined by index.js)
 			const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
 			var engine = new Engine(GODOT_CONFIG);
 
-			// Progress bar / status code here (unchanged)
-			(function() {
-				const INDETERMINATE_STATUS_STEP_MS = 100;
-				var statusProgress = document.getElementById('status-progress');
-				var statusProgressInner = document.getElementById('status-progress-inner');
-				var statusIndeterminate = document.getElementById('status-indeterminate');
-				var statusNotice = document.getElementById('status-notice');
-
-				var initializing = true;
-				var statusMode = 'hidden';
-
-				var animationCallbacks = [];
-				function animate(time) {
-					animationCallbacks.forEach(callback => callback(time));
-					requestAnimationFrame(animate);
+			// startGame returns a Promise; when resolved, Module and audio context should be available
+			engine.startGame({
+				'onProgress': function(current,total) {
+					try {
+						const statusProgressInner = document.getElementById('status-progress-inner');
+						if (statusProgressInner && total > 0) statusProgressInner.style.width = (current/total*100) + '%';
+					} catch(e){}
 				}
-				requestAnimationFrame(animate);
-
-				function setStatusMode(mode) {
-					if (statusMode === mode || !initializing) return;
-					[statusProgress, statusIndeterminate, statusNotice].forEach(elem => { elem.style.display = 'none'; });
-					animationCallbacks = animationCallbacks.filter(function(value) { return (value != animateStatusIndeterminate); });
-					switch(mode){
-						case 'progress': statusProgress.style.display='block'; break;
-						case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
-						case 'notice': statusNotice.style.display='block'; break;
-						case 'hidden': break;
-					}
-					statusMode = mode;
-				}
-
-				function animateStatusIndeterminate(ms){
-					var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
-					if(statusIndeterminate.children[i].style.borderTopColor==''){
-						Array.prototype.slice.call(statusIndeterminate.children).forEach(child=>{child.style.borderTopColor='';});
-						statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
-					}
-				}
-
-				function displayFailureNotice(err){
-					var msg=err.message||err;
-					console.error(msg);
-					statusNotice.textContent = msg;
-					setStatusMode('notice');
-					initializing=false;
-				}
-
-				if(!Engine.isWebGLAvailable()) displayFailureNotice('WebGL not available');
-				else {
-					setStatusMode('indeterminate');
-					engine.startGame({
-						'onProgress': function(current,total){
-							if(total>0){
-								statusProgressInner.style.width = current/total*100 + '%';
-								setStatusMode('progress');
-								if(current===total){ setTimeout(()=>{ setStatusMode('indeterminate'); },500); }
-							} else setStatusMode('indeterminate');
-						}
-					}).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
-				}
-
-			})();
+			}).then(() => {
+				// attempt to capture WebAudio context from engine Module
+				try { if (engine && engine.Module && engine.Module.audioContext) discoveredAudioContext = engine.Module.audioContext; } catch(e){}
+				// ensure audio is suspended when tab is hidden
+				if (document.hidden) suspendAudioContext();
+			}).catch(err => console.error("Engine failed to start:", err));
 		}
 
 		startGameWhenReady();
-	})();
 
+	})(); // IIFE
 	//]]>
 	</script>
-
 </body>
 </html>
