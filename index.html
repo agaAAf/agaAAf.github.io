@@ -1,140 +1,321 @@
-<script type="text/javascript">
-//<![CDATA[
-(function() {
-	const canvas = document.getElementById('canvas');
-	const overlay = document.getElementById('start-overlay');
-	const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-	const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+<!DOCTYPE html>
+<html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
+<head>
+	<meta charset='utf-8' />
+	<meta name='viewport' content='width=device-width, user-scalable=no' />
+	<title>yksgame</title>
+	<style type='text/css'>
 
-	// Adjust overlay message for iOS
-	if (isIOS) {
-		overlay.textContent = "ROTATE YOUR PHONE";
-	}
-
-	async function enterFullscreenAndLandscape() {
-		try {
-			if (!isIOS) {
-				if (canvas.requestFullscreen) await canvas.requestFullscreen();
-				else if (canvas.webkitRequestFullscreen) await canvas.webkitRequestFullscreen();
-
-				if (screen.orientation && screen.orientation.lock) {
-					await screen.orientation.lock('landscape');
-				}
-			}
-		} catch (err) {
-			console.warn('Fullscreen or orientation lock failed:', err);
+		html, body {
+			margin: 0;
+			padding: 0;
+			height: 100%;
+			width: 100%;
+			background-color: black;
+			overflow: hidden; /* prevent scrollbars */
 		}
-	}
 
-	async function startGameWhenReady() {
-		if (isMobile) overlay.style.display = 'flex';
+		#bg {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: url("back2.png") no-repeat center center;
+			background-size: auto 100%;
+			image-rendering: pixelated;
+			z-index: 0; /* behind everything */
+		}
 
+		#canvas {
+			display: block;
+			margin: 0;
+			color: white;
+			position: relative;
+			z-index: 1; /* above background */
+		}
+
+		#canvas:focus {
+			outline: none;
+		}
+
+		.godot {
+			font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+			color: #e0e0e0;
+			background-color: #3b3943;
+			background-image: linear-gradient(to bottom, #403e48, #35333c);
+			border: 1px solid #45434e;
+			box-shadow: 0 0 1px 1px #2f2d35;
+		}
+
+		/* Status display */
+		#status {
+			position: absolute;
+			left: 0;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			visibility: hidden;
+		}
+
+		#status-progress {
+			width: 366px;
+			height: 7px;
+			background-color: #111;
+			border: 1px solid #444;
+			padding: 1px;
+			box-shadow: 0 0 8px #39ff14;
+			border-radius: 4px;
+			position: absolute;
+			bottom: 50px;
+			left: 50%;
+			transform: translateX(-50%);
+			visibility: visible;
+		}
+
+		@media only screen and (orientation:portrait) {
+			#status-progress {
+				width: 61.8%;
+			}
+		}
+
+		#status-progress-inner {
+			height: 100%;
+			width: 0;
+			box-sizing: border-box;
+			transition: width 0.5s linear;
+			background-color: #39ff14;
+			box-shadow: 0 0 10px #39ff14;
+			border-radius: 3px;
+		}
+
+		#status-indeterminate {
+			height: 42px;
+			visibility: visible;
+			position: relative;
+		}
+
+		#status-indeterminate > div {
+			width: 4.5px;
+			height: 0;
+			border-style: solid;
+			border-width: 9px 3px 0 3px;
+			border-color: #2b2b2b transparent transparent transparent;
+			transform-origin: center 21px;
+			position: absolute;
+		}
+
+		#status-indeterminate > div:nth-child(1) { transform: rotate( 22.5deg); }
+		#status-indeterminate > div:nth-child(2) { transform: rotate( 67.5deg); }
+		#status-indeterminate > div:nth-child(3) { transform: rotate(112.5deg); }
+		#status-indeterminate > div:nth-child(4) { transform: rotate(157.5deg); }
+		#status-indeterminate > div:nth-child(5) { transform: rotate(202.5deg); }
+		#status-indeterminate > div:nth-child(6) { transform: rotate(247.5deg); }
+		#status-indeterminate > div:nth-child(7) { transform: rotate(292.5deg); }
+		#status-indeterminate > div:nth-child(8) { transform: rotate(337.5deg); }
+
+		#status-notice {
+			margin: 0 100px;
+			line-height: 1.3;
+			visibility: visible;
+			padding: 4px 6px;
+		}
+
+	</style>
+<link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
+<link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
+
+</head>
+<body>
+	<div id="bg"></div>
+	<canvas id='canvas'>
+		HTML5 canvas appears to be unsupported in the current browser.<br />
+		Please try updating or use a different browser.
+	</canvas>
+	<div id='status'>
+		<div id='status-progress' style='display: none;' oncontextmenu='event.preventDefault();'>
+			<div id ='status-progress-inner'></div>
+		</div>
+		<div id='status-indeterminate' style='display: none;' oncontextmenu='event.preventDefault();'>
+			<div></div><div></div><div></div><div></div>
+			<div></div><div></div><div></div><div></div>
+		</div>
+		<div id='status-notice' class='godot' style='display: none;'></div>
+	</div>
+	<!-- Add this overlay div in your <body> -->
+	<div id="start-overlay" style="
+		position: fixed;
+		top: 0; left: 0;
+		width: 100%; height: 100%;
+		background: rgba(0,0,0,0.6);
+		color: white;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: 'Noto Sans', 'Arial', sans-serif;
+		font-size: 2em;
+		text-align: center;
+		z-index: 9999;
+	">
+		TAP THE SCREEN TWICE TO START THE GAME
+	</div>
+
+	<script>
+	document.addEventListener('visibilitychange', () => {
+		const audios = document.querySelectorAll('audio, video'); // find all media elements
+		if (document.hidden) {
+			audios.forEach(a => a.muted = true);  // mute all audio/video
+		} else {
+			audios.forEach(a => a.muted = false); // unmute when tab is active
+		}
+	});
+	</script>
+
+	<script type='text/javascript' src='index.js'></script>
+
+	<script type="text/javascript">
+	//<![CDATA[
+	(function() {
+		const canvas = document.getElementById('canvas');
+		const overlay = document.getElementById('start-overlay');
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+		const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+
+		// Adjust overlay message for iOS
 		if (isIOS) {
-			// On iOS, wait for rotation to landscape
-			const rotationPromise = new Promise(resolve => {
-				function checkOrientation() {
-					if (window.matchMedia("(orientation: landscape)").matches) {
-						window.removeEventListener('orientationchange', checkOrientation);
-						overlay.style.display = 'none';
-						resolve();
+			overlay.textContent = "ROTATE YOUR PHONE";
+		}
+
+		async function enterFullscreenAndLandscape() {
+			try {
+				if (!isIOS) {
+					if (canvas.requestFullscreen) await canvas.requestFullscreen();
+					else if (canvas.webkitRequestFullscreen) await canvas.webkitRequestFullscreen();
+
+					if (screen.orientation && screen.orientation.lock) {
+						await screen.orientation.lock('landscape');
 					}
 				}
-				window.addEventListener('orientationchange', checkOrientation);
-				checkOrientation();
-			});
-			await rotationPromise;
-		} else if (isMobile) {
-			// Non-iOS mobile: double tap to start
-			const startPromise = new Promise(resolve => {
-				let tapCount = 0;
-				async function clickHandler() {
-					tapCount++;
-					if (tapCount >= 2) {
-						await enterFullscreenAndLandscape();
-						if (window.matchMedia("(orientation: landscape)").matches &&
-							(document.fullscreenElement || document.webkitFullscreenElement)) {
-							document.removeEventListener('click', clickHandler);
-							document.removeEventListener('touchstart', clickHandler);
+			} catch (err) {
+				console.warn('Fullscreen or orientation lock failed:', err);
+			}
+		}
+
+		async function startGameWhenReady() {
+			if (isMobile) overlay.style.display = 'flex';
+
+			if (isIOS) {
+				// On iOS, wait for rotation to landscape
+				const rotationPromise = new Promise(resolve => {
+					function checkOrientation() {
+						if (window.matchMedia("(orientation: landscape)").matches) {
+							window.removeEventListener('orientationchange', checkOrientation);
 							overlay.style.display = 'none';
 							resolve();
 						}
 					}
+					window.addEventListener('orientationchange', checkOrientation);
+					checkOrientation();
+				});
+				await rotationPromise;
+			} else if (isMobile) {
+				// Non-iOS mobile: double tap to start
+				const startPromise = new Promise(resolve => {
+					let tapCount = 0;
+					async function clickHandler() {
+						tapCount++;
+						if (tapCount >= 2) {
+							await enterFullscreenAndLandscape();
+							if (window.matchMedia("(orientation: landscape)").matches &&
+								(document.fullscreenElement || document.webkitFullscreenElement)) {
+								document.removeEventListener('click', clickHandler);
+								document.removeEventListener('touchstart', clickHandler);
+								overlay.style.display = 'none';
+								resolve();
+							}
+						}
+					}
+					document.addEventListener('click', clickHandler);
+					document.addEventListener('touchstart', clickHandler);
+				});
+				await startPromise;
+			} else {
+				// Desktop
+				overlay.style.display = 'none';
+			}
+
+			// ✅ Safe to start Godot engine
+			const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
+			var engine = new Engine(GODOT_CONFIG);
+
+			// Progress/status handling
+			(function() {
+				const INDETERMINATE_STATUS_STEP_MS = 100;
+				var statusProgress = document.getElementById('status-progress');
+				var statusProgressInner = document.getElementById('status-progress-inner');
+				var statusIndeterminate = document.getElementById('status-indeterminate');
+				var statusNotice = document.getElementById('status-notice');
+
+				var initializing = true;
+				var statusMode = 'hidden';
+				var animationCallbacks = [];
+				function animate(time) {
+					animationCallbacks.forEach(cb => cb(time));
+					requestAnimationFrame(animate);
 				}
-				document.addEventListener('click', clickHandler);
-				document.addEventListener('touchstart', clickHandler);
-			});
-			await startPromise;
-		} else {
-			// Desktop
-			overlay.style.display = 'none';
+				requestAnimationFrame(animate);
+
+				function setStatusMode(mode) {
+					if (statusMode === mode || !initializing) return;
+					[statusProgress, statusIndeterminate, statusNotice].forEach(e => e.style.display = 'none');
+					animationCallbacks = animationCallbacks.filter(f => f != animateStatusIndeterminate);
+					switch(mode){
+						case 'progress': statusProgress.style.display='block'; break;
+						case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
+						case 'notice': statusNotice.style.display='block'; break;
+						case 'hidden': break;
+					}
+					statusMode = mode;
+				}
+
+				function animateStatusIndeterminate(ms){
+					var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
+					if(statusIndeterminate.children[i].style.borderTopColor==''){
+						Array.prototype.slice.call(statusIndeterminate.children).forEach(child=>child.style.borderTopColor='');
+						statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
+					}
+				}
+
+				function displayFailureNotice(err){
+					console.error(err);
+					statusNotice.textContent = err.message || err;
+					setStatusMode('notice');
+					initializing=false;
+				}
+
+				if(!Engine.isWebGLAvailable()) displayFailureNotice('WebGL not available');
+				else {
+					setStatusMode('indeterminate');
+					engine.startGame({
+						'onProgress': function(current,total){
+							if(total>0){
+								statusProgressInner.style.width = current/total*100 + '%';
+								setStatusMode('progress');
+								if(current===total){ setTimeout(()=>setStatusMode('indeterminate'),500); }
+							} else setStatusMode('indeterminate');
+						}
+					}).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
+				}
+			})();
 		}
 
-		// ✅ Safe to start Godot engine
-		const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
-		var engine = new Engine(GODOT_CONFIG);
+		startGameWhenReady();
+	})();
+	//]]>
+	</script>
 
-		// Progress/status handling
-		(function() {
-			const INDETERMINATE_STATUS_STEP_MS = 100;
-			var statusProgress = document.getElementById('status-progress');
-			var statusProgressInner = document.getElementById('status-progress-inner');
-			var statusIndeterminate = document.getElementById('status-indeterminate');
-			var statusNotice = document.getElementById('status-notice');
-
-			var initializing = true;
-			var statusMode = 'hidden';
-			var animationCallbacks = [];
-			function animate(time) {
-				animationCallbacks.forEach(cb => cb(time));
-				requestAnimationFrame(animate);
-			}
-			requestAnimationFrame(animate);
-
-			function setStatusMode(mode) {
-				if (statusMode === mode || !initializing) return;
-				[statusProgress, statusIndeterminate, statusNotice].forEach(e => e.style.display = 'none');
-				animationCallbacks = animationCallbacks.filter(f => f != animateStatusIndeterminate);
-				switch(mode){
-					case 'progress': statusProgress.style.display='block'; break;
-					case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
-					case 'notice': statusNotice.style.display='block'; break;
-					case 'hidden': break;
-				}
-				statusMode = mode;
-			}
-
-			function animateStatusIndeterminate(ms){
-				var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
-				if(statusIndeterminate.children[i].style.borderTopColor==''){
-					Array.prototype.slice.call(statusIndeterminate.children).forEach(child=>child.style.borderTopColor='');
-					statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
-				}
-			}
-
-			function displayFailureNotice(err){
-				console.error(err);
-				statusNotice.textContent = err.message || err;
-				setStatusMode('notice');
-				initializing=false;
-			}
-
-			if(!Engine.isWebGLAvailable()) displayFailureNotice('WebGL not available');
-			else {
-				setStatusMode('indeterminate');
-				engine.startGame({
-					'onProgress': function(current,total){
-						if(total>0){
-							statusProgressInner.style.width = current/total*100 + '%';
-							setStatusMode('progress');
-							if(current===total){ setTimeout(()=>setStatusMode('indeterminate'),500); }
-						} else setStatusMode('indeterminate');
-					}
-				}).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
-			}
-		})();
-	}
-
-	startGameWhenReady();
-})();
-//]]>
-</script>
+</body>
+</html>
