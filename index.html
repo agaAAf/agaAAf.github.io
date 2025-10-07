@@ -1,325 +1,219 @@
 <!DOCTYPE html>
 <html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
 <head>
-	<meta charset='utf-8' />
-	<meta name='viewport' content='width=device-width, user-scalable=no' />
-	<title>yksgame</title>
-	<style type='text/css'>
+<meta charset='utf-8' />
+<meta name='viewport' content='width=device-width, user-scalable=no' />
+<title>yksgame</title>
+<style type='text/css'>
+html, body { margin:0; padding:0; height:100%; width:100%; background-color:black; overflow:hidden; }
+body { background: url("back.png") no-repeat center center; background-size: auto 100%; background-attachment: fixed; image-rendering: pixelated; }
+#canvas { display:block; margin:0; color:white; }
+#canvas:focus { outline:none; }
+.godot { font-family:'Noto Sans', 'Droid Sans', Arial, sans-serif; color:#e0e0e0; background-color:#3b3943; background-image: linear-gradient(to bottom,#403e48,#35333c); border:1px solid #45434e; box-shadow:0 0 1px 1px #2f2d35; }
 
-		html, body {
-			margin: 0;
-			padding: 0;
-			height: 100%;
-			width: 100%;
-			background-color: black;
-			overflow: hidden; /* prevent scrollbars */
-		}
+/* Status */
+#status { position:absolute; left:0;top:0;right:0;bottom:0; display:flex; justify-content:center; align-items:center; visibility:hidden; }
+#status-progress { width:366px; height:7px; background-color:#111; border:1px solid #444; padding:1px; box-shadow:0 0 8px #39ff14; border-radius:4px; visibility:visible; position:absolute; bottom:50px; left:50%; transform:translateX(-50%); }
+@media only screen and (orientation:portrait){ #status-progress{width:61.8%;} }
+#status-progress-inner { height:100%; width:0; box-sizing:border-box; transition: width 0.5s linear; background-color:#39ff14; box-shadow:0 0 10px #39ff14; border-radius:3px; }
+#status-indeterminate { height:42px; visibility:visible; position:relative; }
+#status-indeterminate > div { width:4.5px; height:0; border-style:solid; border-width:9px 3px 0 3px; border-color:#2b2b2b transparent transparent transparent; transform-origin:center 21px; position:absolute; }
+#status-notice { margin:0 100px; line-height:1.3; padding:4px 6px; visibility:visible; }
 
-		#bg {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background: url("back2.png") no-repeat center center;
-			background-size: auto 100%;
-			image-rendering: pixelated;
-			z-index: 0; /* behind everything */
-		}
+/* Joystick (left) */
+#joystick-container { position:absolute; left:40px; bottom:60px; width:120px; height:120px; touch-action:none; }
+#joystick-base { width:100%; height:100%; background:url('joystick_base.png') no-repeat center center; background-size:contain; }
+#joystick-thumb { position:absolute; width:60px; height:60px; left:30px; top:30px; background:url('joystick_thumb.png') no-repeat center center; background-size:contain; }
 
-		#canvas {
-			display: block;
-			margin: 0;
-			color: white;
-			position: relative;
-			z-index: 1; /* above background */
-		}
+/* Buttons (right) */
+#buttons-container { position:absolute; right:20px; bottom:40px; width:160px; height:160px; }
+.button { position:absolute; width:60px; height:60px; background-size:contain; background-repeat:no-repeat; touch-action:none; }
+#btn-up { top:0; left:50%; transform:translateX(-50%); }
+#btn-left { left:0; top:50%; transform:translateY(-50%); }
+#btn-right { right:0; top:50%; transform:translateY(-50%); }
+#btn-down { bottom:0; left:50%; transform:translateX(-50%); }
 
-		#canvas:focus {
-			outline: none;
-		}
-
-		.godot {
-			font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-			color: #e0e0e0;
-			background-color: #3b3943;
-			background-image: linear-gradient(to bottom, #403e48, #35333c);
-			border: 1px solid #45434e;
-			box-shadow: 0 0 1px 1px #2f2d35;
-		}
-
-		/* Status display */
-		#status {
-			position: absolute;
-			left: 0;
-			top: 0;
-			right: 0;
-			bottom: 0;
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			visibility: hidden;
-		}
-
-		#status-progress {
-			width: 366px;
-			height: 7px;
-			background-color: #111;
-			border: 1px solid #444;
-			padding: 1px;
-			box-shadow: 0 0 8px #39ff14;
-			border-radius: 4px;
-			position: absolute;
-			bottom: 50px;
-			left: 50%;
-			transform: translateX(-50%);
-			visibility: visible;
-		}
-
-		@media only screen and (orientation:portrait) {
-			#status-progress {
-				width: 61.8%;
-			}
-		}
-
-		#status-progress-inner {
-			height: 100%;
-			width: 0;
-			box-sizing: border-box;
-			transition: width 0.5s linear;
-			background-color: #39ff14;
-			box-shadow: 0 0 10px #39ff14;
-			border-radius: 3px;
-		}
-
-		#status-indeterminate {
-			height: 42px;
-			visibility: visible;
-			position: relative;
-		}
-
-		#status-indeterminate > div {
-			width: 4.5px;
-			height: 0;
-			border-style: solid;
-			border-width: 9px 3px 0 3px;
-			border-color: #2b2b2b transparent transparent transparent;
-			transform-origin: center 21px;
-			position: absolute;
-		}
-
-		#status-indeterminate > div:nth-child(1) { transform: rotate( 22.5deg); }
-		#status-indeterminate > div:nth-child(2) { transform: rotate( 67.5deg); }
-		#status-indeterminate > div:nth-child(3) { transform: rotate(112.5deg); }
-		#status-indeterminate > div:nth-child(4) { transform: rotate(157.5deg); }
-		#status-indeterminate > div:nth-child(5) { transform: rotate(202.5deg); }
-		#status-indeterminate > div:nth-child(6) { transform: rotate(247.5deg); }
-		#status-indeterminate > div:nth-child(7) { transform: rotate(292.5deg); }
-		#status-indeterminate > div:nth-child(8) { transform: rotate(337.5deg); }
-
-		#status-notice {
-			margin: 0 100px;
-			line-height: 1.3;
-			visibility: visible;
-			padding: 4px 6px;
-		}
-
-	</style>
+/* Hide controls on desktop */
+.hide-controls { display: none !important; }
+</style>
 <link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
 <link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
-
 </head>
 <body>
-	<div id="bg"></div>
-	<canvas id='canvas'>
-		HTML5 canvas appears to be unsupported in the current browser.<br />
-		Please try updating or use a different browser.
-	</canvas>
-	<div id='status'>
-		<div id='status-progress' style='display: none;' oncontextmenu='event.preventDefault();'>
-			<div id ='status-progress-inner'></div>
-		</div>
-		<div id='status-indeterminate' style='display: none;' oncontextmenu='event.preventDefault();'>
-			<div></div><div></div><div></div><div></div>
-			<div></div><div></div><div></div><div></div>
-		</div>
-		<div id='status-notice' class='godot' style='display: none;'></div>
-	</div>
-	<!-- Add this overlay div in your <body> -->
-	<div id="start-overlay" style="
-		position: fixed;
-		top: 0; left: 0;
-		width: 100%; height: 100%;
-		background: rgba(0,0,0,0.6);
-		color: white;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-family: 'Noto Sans', 'Arial', sans-serif;
-		font-size: 2em;
-		text-align: center;
-		z-index: 9999;
-	">
-		TAP THE SCREEN TWICE TO START THE GAME
-	</div>
+<canvas id='canvas'>HTML5 canvas unsupported</canvas>
 
-	<script>
-	document.addEventListener('visibilitychange', () => {
-		const audios = document.querySelectorAll('audio, video'); // find all media elements
-		if (document.hidden) {
-			audios.forEach(a => a.muted = true);  // mute all audio/video
-		} else {
-			audios.forEach(a => a.muted = false); // unmute when tab is active
-		}
-	});
-	</script>
+<!-- Godot Status -->
+<div id='status'>
+    <div id='status-progress' style='display:none;' oncontextmenu='event.preventDefault();'>
+        <div id='status-progress-inner'></div>
+    </div>
+    <div id='status-indeterminate' style='display:none;' oncontextmenu='event.preventDefault();'>
+        <div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div>
+    </div>
+    <div id='status-notice' class='godot' style='display:none;'></div>
+</div>
 
-	<script type='text/javascript' src='index.js'></script>
+<!-- Joystick -->
+<div id="joystick-container">
+    <div id="joystick-base"></div>
+    <div id="joystick-thumb"></div>
+</div>
 
-	<script type="text/javascript">
-	//<![CDATA[
-	(function() {
-		const canvas = document.getElementById('canvas');
-		const overlay = document.getElementById('start-overlay');
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-		const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+<!-- Diamond Buttons -->
+<div id="buttons-container">
+    <div id="btn-up" class="button" data-key="KeyY" style="background-image:url('btn_up.png');"></div>
+    <div id="btn-left" class="button" data-key="KeyA" style="background-image:url('btn_left.png');"></div>
+    <div id="btn-right" class="button" data-key="KeyE" style="background-image:url('btn_right.png');"></div>
+    <div id="btn-down" class="button" data-key="Space" style="background-image:url('btn_down.png');"></div>
+</div>
 
-		// Adjust overlay message for iOS
-		if (isIOS) overlay.textContent = "ROTATE YOUR PHONE";
+<script type='text/javascript' src='index.js'></script>
+<script>
+// --- Hide controls on desktop ---
+function isMobile() {
+    return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+if (!isMobile()) {
+    document.getElementById('joystick-container').classList.add('hide-controls');
+    document.getElementById('buttons-container').classList.add('hide-controls');
+}
 
-		async function enterFullscreenAndLandscape() {
-			try {
-				if (!isIOS) {
-					if (canvas.requestFullscreen) await canvas.requestFullscreen();
-					else if (canvas.webkitRequestFullscreen) await canvas.webkitRequestFullscreen();
+// --- Godot Initialization ---
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":2887136,"index.wasm":17860295},"focusCanvas":true,"gdnativeLibs":[]};
+var engine = new Engine(GODOT_CONFIG);
 
-					if (screen.orientation && screen.orientation.lock) {
-						await screen.orientation.lock('landscape');
-					}
-				}
-			} catch (err) {
-				console.warn('Fullscreen or orientation lock failed:', err);
-			}
-		}
+(function(){
+    const INDETERMINATE_STATUS_STEP_MS = 100;
+    var statusProgress=document.getElementById('status-progress');
+    var statusProgressInner=document.getElementById('status-progress-inner');
+    var statusIndeterminate=document.getElementById('status-indeterminate');
+    var statusNotice=document.getElementById('status-notice');
+    var initializing=true;
+    var statusMode='hidden';
+    var animationCallbacks=[];
+    function animate(time){ animationCallbacks.forEach(cb=>cb(time)); requestAnimationFrame(animate); }
+    requestAnimationFrame(animate);
 
-		async function startGameWhenReady() {
-			if (isMobile) overlay.style.display = 'flex';
+    function setStatusMode(mode){
+        if(statusMode===mode || !initializing) return;
+        [statusProgress,statusIndeterminate,statusNotice].forEach(e=>e.style.display='none');
+        animationCallbacks=animationCallbacks.filter(v=>v!=animateStatusIndeterminate);
+        switch(mode){
+            case 'progress': statusProgress.style.display='block'; break;
+            case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
+            case 'notice': statusNotice.style.display='block'; break;
+            case 'hidden': break;
+        }
+        statusMode=mode;
+    }
 
-			if (isIOS) {
-				// ✅ On iOS: wait until the device is in landscape
-				const rotationPromise = new Promise(resolve => {
-					function checkOrientation() {
-						if (window.matchMedia("(orientation: landscape)").matches) {
-							overlay.style.display = 'none';
-							window.removeEventListener('orientationchange', checkOrientation);
-							window.removeEventListener('resize', checkOrientation);
-							resolve();
-						}
-					}
+    function animateStatusIndeterminate(ms){
+        var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
+        if(statusIndeterminate.children[i].style.borderTopColor==''){
+            Array.from(statusIndeterminate.children).forEach(c=>c.style.borderTopColor='');
+            statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
+        }
+    }
 
-					// iOS may not immediately trigger orientationchange, so listen to both
-					window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 300));
-					window.addEventListener('resize', () => setTimeout(checkOrientation, 300));
+    function displayFailureNotice(err){
+        var msg=err.message||err;
+        console.error(msg);
+        statusNotice.textContent = msg;
+        setStatusMode('notice');
+        initializing=false;
+    }
 
-					// Initial check (handles starting already in landscape)
-					checkOrientation();
-				});
-				await rotationPromise;
-			} else if (isMobile) {
-				// ✅ Non-iOS mobile: double-tap to start
-				const startPromise = new Promise(resolve => {
-					let tapCount = 0;
-					async function clickHandler() {
-						tapCount++;
-						if (tapCount >= 2) {
-							await enterFullscreenAndLandscape();
-							if (window.matchMedia("(orientation: landscape)").matches &&
-								(document.fullscreenElement || document.webkitFullscreenElement)) {
-								document.removeEventListener('click', clickHandler);
-								document.removeEventListener('touchstart', clickHandler);
-								overlay.style.display = 'none';
-								resolve();
-							}
-						}
-					}
-					document.addEventListener('click', clickHandler);
-					document.addEventListener('touchstart', clickHandler);
-				});
-				await startPromise;
-			} else {
-				// ✅ Desktop
-				overlay.style.display = 'none';
-			}
+    if(!Engine.isWebGLAvailable()){ displayFailureNotice('WebGL not available'); }
+    else{
+        setStatusMode('indeterminate');
+        engine.startGame({
+            'onProgress': function(current,total){
+                if(total>0){
+                    statusProgressInner.style.width=current/total*100+'%';
+                    setStatusMode('progress');
+                    if(current===total) setTimeout(()=>{ setStatusMode('indeterminate'); },500);
+                } else setStatusMode('indeterminate');
+            },
+        }).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
+    }
+})();
 
-			// ✅ Safe to start Godot engine
-			const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
-			var engine = new Engine(GODOT_CONFIG);
+// --- Send Key to Godot Canvas ---
+const canvas=document.getElementById('canvas');
+function sendGodotKey(code,isDown){
+    const keyMap = { 'KeyY':'Y', 'KeyA':'A', 'KeyE':'E', 'Space':' ' };
+    const key = keyMap[code] || code;
+    const keyCode = (code==='Space')?32:key.toUpperCase().charCodeAt(0);
+    canvas.dispatchEvent(new KeyboardEvent(isDown?'keydown':'keyup',{key:key,code:code,keyCode:keyCode,which:keyCode,bubbles:true,cancelable:true}));
+}
 
-			(function() {
-				const INDETERMINATE_STATUS_STEP_MS = 100;
-				var statusProgress = document.getElementById('status-progress');
-				var statusProgressInner = document.getElementById('status-progress-inner');
-				var statusIndeterminate = document.getElementById('status-indeterminate');
-				var statusNotice = document.getElementById('status-notice');
+// --- Multi-touch Joystick ---
+const joystickContainer=document.getElementById('joystick-container');
+const thumb=document.getElementById('joystick-thumb');
+const joystickTouches = {};
 
-				var initializing = true;
-				var statusMode = 'hidden';
-				var animationCallbacks = [];
-				function animate(time) {
-					animationCallbacks.forEach(cb => cb(time));
-					requestAnimationFrame(animate);
-				}
-				requestAnimationFrame(animate);
+joystickContainer.addEventListener('pointerdown', e=>{
+    if (!isMobile()) return;
+    e.preventDefault();
+    joystickTouches[e.pointerId] = { startX:e.clientX, startY:e.clientY, lastKey:null };
+    thumb.style.transition='0s';
+});
+window.addEventListener('pointermove', e=>{
+    if (!isMobile() || !joystickTouches[e.pointerId]) return;
+    const jt = joystickTouches[e.pointerId];
+    const dx=e.clientX-jt.startX, dy=e.clientY-jt.startY;
+    const maxDist=50;
+    const distance=Math.min(Math.sqrt(dx*dx+dy*dy),maxDist);
+    const angle=Math.atan2(dy,dx);
+    const moveX=Math.cos(angle)*distance;
+    const moveY=Math.sin(angle)*distance;
+    thumb.style.left=`${30+moveX}px`;
+    thumb.style.top=`${30+moveY}px`;
+    let key = Math.abs(dx)>Math.abs(dy) ? (dx>0?'ArrowRight':'ArrowLeft') : (dy>0?'ArrowDown':'ArrowUp');
+    if(jt.lastKey!==key){
+        if(jt.lastKey) canvas.dispatchEvent(new KeyboardEvent('keyup',{code:jt.lastKey,bubbles:true}));
+        canvas.dispatchEvent(new KeyboardEvent('keydown',{code:key,bubbles:true}));
+        jt.lastKey=key;
+    }
+});
+window.addEventListener('pointerup', e=>{
+    if (!isMobile() || !joystickTouches[e.pointerId]) return;
+    const jt=joystickTouches[e.pointerId];
+    if(jt.lastKey) canvas.dispatchEvent(new KeyboardEvent('keyup',{code:jt.lastKey,bubbles:true}));
+    delete joystickTouches[e.pointerId];
+    thumb.style.transition='0.2s';
+    thumb.style.left='30px';
+    thumb.style.top='30px';
+});
 
-				function setStatusMode(mode) {
-					if (statusMode === mode || !initializing) return;
-					[statusProgress, statusIndeterminate, statusNotice].forEach(e => e.style.display = 'none');
-					animationCallbacks = animationCallbacks.filter(f => f != animateStatusIndeterminate);
-					switch(mode){
-						case 'progress': statusProgress.style.display='block'; break;
-						case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
-						case 'notice': statusNotice.style.display='block'; break;
-						case 'hidden': break;
-					}
-					statusMode = mode;
-				}
+// --- Multi-touch Buttons ---
+document.querySelectorAll('.button').forEach(btn=>{
+    const code=btn.dataset.key;
+    const keyMap = { 'KeyY': {key:'y',keyCode:89}, 'KeyA':{key:'a',keyCode:65}, 'KeyE':{key:'e',keyCode:69}, 'Space':{key:' ',keyCode:32} };
+    const mapping=keyMap[code];
+    const activeTouches = {};
 
-				function animateStatusIndeterminate(ms){
-					var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
-					if(statusIndeterminate.children[i].style.borderTopColor==''){
-						Array.prototype.slice.call(statusIndeterminate.children).forEach(child=>child.style.borderTopColor='');
-						statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
-					}
-				}
+    btn.addEventListener('pointerdown', e=>{
+        if (!isMobile()) return;
+        e.preventDefault();
+        if(activeTouches[e.pointerId]) return;
+        activeTouches[e.pointerId]=true;
+        btn.style.filter='brightness(0.6)';
+        canvas.dispatchEvent(new KeyboardEvent('keydown',{key:mapping.key,code:code,keyCode:mapping.keyCode,which:mapping.keyCode,bubbles:true}));
+    });
 
-				function displayFailureNotice(err){
-					console.error(err);
-					statusNotice.textContent = err.message || err;
-					setStatusMode('notice');
-					initializing=false;
-				}
+    function releaseTouch(e){
+        if(!activeTouches[e.pointerId]) return;
+        delete activeTouches[e.pointerId];
+        if(Object.keys(activeTouches).length===0) btn.style.filter='brightness(1)';
+        canvas.dispatchEvent(new KeyboardEvent('keyup',{key:mapping.key,code:code,keyCode:mapping.keyCode,which:mapping.keyCode,bubbles:true}));
+    }
 
-				if(!Engine.isWebGLAvailable()) displayFailureNotice('WebGL not available');
-				else {
-					setStatusMode('indeterminate');
-					engine.startGame({
-						'onProgress': function(current,total){
-							if(total>0){
-								statusProgressInner.style.width = current/total*100 + '%';
-								setStatusMode('progress');
-								if(current===total){ setTimeout(()=>setStatusMode('indeterminate'),500); }
-							} else setStatusMode('indeterminate');
-						}
-					}).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
-				}
-			})();
-		}
-
-		startGameWhenReady();
-	})();
-	//]]>
-	</script>
-
-
+    btn.addEventListener('pointerup', releaseTouch);
+    btn.addEventListener('pointercancel', releaseTouch);
+    btn.addEventListener('pointerleave', releaseTouch);
+});
+</script>
 </body>
 </html>
