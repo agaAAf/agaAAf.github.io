@@ -1,282 +1,140 @@
-<!DOCTYPE html>
-<html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
-<head>
-	<meta charset='utf-8' />
-	<meta name='viewport' content='width=device-width, initial-scale=1.0, user-scalable=no' />
-	<title>yksgame</title>
-	<style type='text/css'>
-		html, body {
-			margin: 0; padding: 0;
-			height: 100%; width: 100%;
-			background-color: black; overflow: hidden;
-			-webkit-touch-callout: none; -webkit-user-select: none;
-			-ms-touch-action: manipulation; touch-action: manipulation;
-		}
+<script type="text/javascript">
+//<![CDATA[
+(function() {
+	const canvas = document.getElementById('canvas');
+	const overlay = document.getElementById('start-overlay');
+	const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+	const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
 
-		/* background behind canvas */
-		#bg {
-			position: fixed; top:0; left:0;
-			width:100%; height:100%;
-			background: url("back2.png") no-repeat center center;
-			background-size: auto 100%;
-			image-rendering: pixelated;
-			z-index: 0;
-		}
+	// Adjust overlay message for iOS
+	if (isIOS) {
+		overlay.textContent = "ROTATE YOUR PHONE";
+	}
 
-		/* when simulated fullscreen is active (iOS fallback), canvas is fixed to viewport */
-		body.sim-fullscreen #bg { display:none; }
-		body.sim-fullscreen #canvas {
-			position: fixed !important; top:0; left:0;
-			width: 100vw !important; height: 100vh !important;
-		}
+	async function enterFullscreenAndLandscape() {
+		try {
+			if (!isIOS) {
+				if (canvas.requestFullscreen) await canvas.requestFullscreen();
+				else if (canvas.webkitRequestFullscreen) await canvas.webkitRequestFullscreen();
 
-		#canvas {
-			display:block; margin:0; color:white;
-			position: relative; z-index:1;
-			width:100%; height:100%;
-			object-fit: contain; touch-action: none;
-			-webkit-tap-highlight-color: transparent;
-		}
-
-		#start-overlay {
-			position: fixed; top:0; left:0; width:100%; height:100%;
-			background: rgba(0,0,0,0.6); color: #fff;
-			display: flex; align-items: center; justify-content: center;
-			font-family: 'Noto Sans', Arial, sans-serif; font-size: 1.6rem;
-			text-align:center; z-index:9999; user-select:none;
-		}
-
-		.godot { font-family:'Noto Sans', 'Droid Sans', Arial, sans-serif; color:#e0e0e0; }
-
-		#status { position:absolute; left:0; top:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; visibility:hidden; }
-		#status-progress { width:366px; height:7px; background:#111; border:1px solid #444; padding:1px; box-shadow:0 0 8px #39ff14; border-radius:4px; position:absolute; bottom:50px; left:50%; transform:translateX(-50%); visibility:visible; }
-		@media only screen and (orientation:portrait) { #status-progress { width:61.8%; } }
-		#status-progress-inner { height:100%; width:0; box-sizing:border-box; transition: width .5s linear; background:#39ff14; box-shadow:0 0 10px #39ff14; border-radius:3px; }
-		#status-indeterminate { height:42px; visibility:visible; position:relative; }
-		#status-notice { margin:0 100px; line-height:1.3; padding:4px 6px; visibility:visible; }
-	</style>
-	<link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
-	<link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
-</head>
-<body>
-	<div id="bg" aria-hidden="true"></div>
-	<canvas id='canvas' tabindex="0">
-		HTML5 canvas appears to be unsupported in the current browser.<br/>Please try updating or use a different browser.
-	</canvas>
-
-	<div id='status'>
-		<div id='status-progress' style='display:none;' oncontextmenu='event.preventDefault();'><div id='status-progress-inner'></div></div>
-		<div id='status-indeterminate' style='display:none;' oncontextmenu='event.preventDefault();'><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
-		<div id='status-notice' class='godot' style='display:none;'></div>
-	</div>
-
-	<div id="start-overlay">TAP THE SCREEN TWICE TO START THE GAME</div>
-
-	<script>
-	// simple mute for native media elements on visibility change
-	(function(){
-		function muteHtmlMedia(mute) {
-			document.querySelectorAll('audio,video').forEach(el => { try { el.muted = mute; } catch(e){} });
-		}
-		document.addEventListener('visibilitychange', ()=> muteHtmlMedia(document.hidden));
-		window.addEventListener('blur', ()=> muteHtmlMedia(true));
-		window.addEventListener('focus', ()=> muteHtmlMedia(false));
-	})();
-	</script>
-
-	<script type='text/javascript' src='index.js'></script>
-
-	<script type="text/javascript">
-	//<![CDATA[
-	(function(){
-		const canvas = document.getElementById('canvas');
-		const overlay = document.getElementById('start-overlay');
-		const bg = document.getElementById('bg');
-
-		const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-		// Simulated fullscreen for iOS / unsupported platforms
-		function simulateFullscreen() {
-			document.body.classList.add('sim-fullscreen');
-			bg.style.display = 'none';
-		}
-		function exitSimulatedFullscreen() {
-			document.body.classList.remove('sim-fullscreen');
-			bg.style.display = '';
-		}
-
-		// Try to perform native fullscreen then orientation lock when supported.
-		// Skip native fullscreen on iOS (unsupported) and use simulated instead.
-		async function tryNativeFullscreenAndLock() {
-			if (isIOS) { // iOS: skip native fullscreen/orientation lock
-				simulateFullscreen();
-				return;
-			}
-			// attempt actual fullscreen on canvas or document element
-			try {
-				if (canvas.requestFullscreen) {
-					// call directly in gesture handler (we won't await here to avoid breaking gesture)
-					canvas.requestFullscreen();
-				} else if (document.documentElement.requestFullscreen) {
-					document.documentElement.requestFullscreen();
-				} else if (canvas.webkitRequestFullscreen) {
-					canvas.webkitRequestFullscreen();
-				} else {
-					// no fullscreen support -> simulate
-					simulateFullscreen();
-				}
-			} catch(e) {
-				// fallback to simulate if requestFullscreen failed
-				simulateFullscreen();
-			}
-
-			// Try to lock orientation if available (may be rejected)
-			try {
 				if (screen.orientation && screen.orientation.lock) {
-					screen.orientation.lock('landscape').catch(()=>{ /* ignore permission failures */ });
+					await screen.orientation.lock('landscape');
 				}
-			} catch(e) { /* ignore */ }
-		}
-
-		// Observe fullscreenchange to hide background safely when browser enters fullscreen
-		function onFullScreenChange() {
-			const fs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
-			if (fs) {
-				bg.style.display = 'none';
-				document.body.classList.remove('sim-fullscreen'); // if browser actually fullscreen, remove sim
-			} else {
-				// restore background a little after exit to let canvas resize
-				setTimeout(()=>{ bg.style.display = ''; }, 80);
-				document.body.classList.remove('sim-fullscreen');
 			}
+		} catch (err) {
+			console.warn('Fullscreen or orientation lock failed:', err);
 		}
-		document.addEventListener('fullscreenchange', onFullScreenChange);
-		document.addEventListener('webkitfullscreenchange', onFullScreenChange);
-		document.addEventListener('mozfullscreenchange', onFullScreenChange);
+	}
 
-		// Double-tap detection (robust) — use touchend for mobile and click fallback
-		function waitForDoubleTapThenStart() {
-			return new Promise(resolve => {
-				if (!isMobile) return resolve(); // desktop: continue immediately
+	async function startGameWhenReady() {
+		if (isMobile) overlay.style.display = 'flex';
 
-				let lastTap = 0;
-				let resolved = false;
-
-				function cleanup() {
-					document.removeEventListener('touchend', touchHandler);
-					document.removeEventListener('click', clickHandler);
-					window.removeEventListener('orientationchange', orientationHandler);
-				}
-
-				function orientationHandler() {
+		if (isIOS) {
+			// On iOS, wait for rotation to landscape
+			const rotationPromise = new Promise(resolve => {
+				function checkOrientation() {
 					if (window.matchMedia("(orientation: landscape)").matches) {
-						cleanup();
+						window.removeEventListener('orientationchange', checkOrientation);
 						overlay.style.display = 'none';
 						resolve();
-						resolved = true;
 					}
 				}
-
-				async function processDoubleTap() {
-					// perform fullscreen+lock (native when possible, simulated on iOS)
-					await tryNativeFullscreenAndLock();
-
-					// if now in landscape + fullscreen OR simulated, proceed
-					const inLandscape = window.matchMedia("(orientation: landscape)").matches;
-					const inFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
-					const inSim = document.body.classList.contains('sim-fullscreen');
-
-					if (inLandscape && (inFullscreen || inSim)) {
-						cleanup();
-						overlay.style.display = 'none';
-						resolve();
-						resolved = true;
-					} else {
-						// wait for orientation change / fullscreenchange
-						// overlay stays visible
-					}
-				}
-
-				function touchHandler(e) {
-					const now = Date.now();
-					if (now - lastTap <= 400) {
-						processDoubleTap();
-						lastTap = 0;
-					} else {
-						lastTap = now;
-					}
-				}
-
-				function clickHandler(e) {
-					// fallback for click events (desktop or some mobile browsers)
-					const now = Date.now();
-					if (now - lastTap <= 400) {
-						processDoubleTap();
-						lastTap = 0;
-					} else lastTap = now;
-				}
-
-				document.addEventListener('touchend', touchHandler, {passive:true});
-				document.addEventListener('click', clickHandler, {passive:true});
-				window.addEventListener('orientationchange', orientationHandler, {passive:true});
+				window.addEventListener('orientationchange', checkOrientation);
+				checkOrientation();
 			});
+			await rotationPromise;
+		} else if (isMobile) {
+			// Non-iOS mobile: double tap to start
+			const startPromise = new Promise(resolve => {
+				let tapCount = 0;
+				async function clickHandler() {
+					tapCount++;
+					if (tapCount >= 2) {
+						await enterFullscreenAndLandscape();
+						if (window.matchMedia("(orientation: landscape)").matches &&
+							(document.fullscreenElement || document.webkitFullscreenElement)) {
+							document.removeEventListener('click', clickHandler);
+							document.removeEventListener('touchstart', clickHandler);
+							overlay.style.display = 'none';
+							resolve();
+						}
+					}
+				}
+				document.addEventListener('click', clickHandler);
+				document.addEventListener('touchstart', clickHandler);
+			});
+			await startPromise;
+		} else {
+			// Desktop
+			overlay.style.display = 'none';
 		}
 
-		// Attempt to discover an audio context for WebAudio suspension/resume (after engine loads)
-		let discoveredAudioContext = null;
-		function suspendAudioContext() {
-			try {
-				if (discoveredAudioContext && discoveredAudioContext.state === 'running') discoveredAudioContext.suspend().catch(()=>{});
-				else if (window.Module && Module.audioContext && Module.audioContext.state === 'running') Module.audioContext.suspend().catch(()=>{});
-			} catch(e){}
-		}
-		function resumeAudioContext() {
-			try {
-				if (discoveredAudioContext && discoveredAudioContext.state === 'suspended') discoveredAudioContext.resume().catch(()=>{});
-				else if (window.Module && Module.audioContext && Module.audioContext.state === 'suspended') Module.audioContext.resume().catch(()=>{});
-			} catch(e){}
-		}
-		document.addEventListener('visibilitychange', function(){ if (document.hidden) suspendAudioContext(); else resumeAudioContext(); });
+		// ✅ Safe to start Godot engine
+		const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
+		var engine = new Engine(GODOT_CONFIG);
 
-		// MAIN: orchestrate double-tap -> (native or simulated) fullscreen -> start engine
-		async function startGameWhenReady() {
-			if (isMobile) overlay.style.display = 'flex'; else overlay.style.display = 'none';
+		// Progress/status handling
+		(function() {
+			const INDETERMINATE_STATUS_STEP_MS = 100;
+			var statusProgress = document.getElementById('status-progress');
+			var statusProgressInner = document.getElementById('status-progress-inner');
+			var statusIndeterminate = document.getElementById('status-indeterminate');
+			var statusNotice = document.getElementById('status-notice');
 
-			// If on mobile and not already in landscape+fullscreen, wait for double tap/orientation
-			const alreadyReady = window.matchMedia("(orientation: landscape)").matches &&
-								 (document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('sim-fullscreen'));
+			var initializing = true;
+			var statusMode = 'hidden';
+			var animationCallbacks = [];
+			function animate(time) {
+				animationCallbacks.forEach(cb => cb(time));
+				requestAnimationFrame(animate);
+			}
+			requestAnimationFrame(animate);
 
-			if (isMobile && !alreadyReady) {
-				await waitForDoubleTapThenStart();
-			} else {
-				overlay.style.display = 'none';
+			function setStatusMode(mode) {
+				if (statusMode === mode || !initializing) return;
+				[statusProgress, statusIndeterminate, statusNotice].forEach(e => e.style.display = 'none');
+				animationCallbacks = animationCallbacks.filter(f => f != animateStatusIndeterminate);
+				switch(mode){
+					case 'progress': statusProgress.style.display='block'; break;
+					case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
+					case 'notice': statusNotice.style.display='block'; break;
+					case 'hidden': break;
+				}
+				statusMode = mode;
 			}
 
-			// Create and start engine (Engine defined by index.js)
-			const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
-			var engine = new Engine(GODOT_CONFIG);
-
-			// startGame returns a Promise; when resolved, Module and audio context should be available
-			engine.startGame({
-				'onProgress': function(current,total) {
-					try {
-						const statusProgressInner = document.getElementById('status-progress-inner');
-						if (statusProgressInner && total > 0) statusProgressInner.style.width = (current/total*100) + '%';
-					} catch(e){}
+			function animateStatusIndeterminate(ms){
+				var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
+				if(statusIndeterminate.children[i].style.borderTopColor==''){
+					Array.prototype.slice.call(statusIndeterminate.children).forEach(child=>child.style.borderTopColor='');
+					statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
 				}
-			}).then(() => {
-				// attempt to capture WebAudio context from engine Module
-				try { if (engine && engine.Module && engine.Module.audioContext) discoveredAudioContext = engine.Module.audioContext; } catch(e){}
-				// ensure audio is suspended when tab is hidden
-				if (document.hidden) suspendAudioContext();
-			}).catch(err => console.error("Engine failed to start:", err));
-		}
+			}
 
-		startGameWhenReady();
+			function displayFailureNotice(err){
+				console.error(err);
+				statusNotice.textContent = err.message || err;
+				setStatusMode('notice');
+				initializing=false;
+			}
 
-	})(); // IIFE
-	//]]>
-	</script>
-</body>
-</html>
+			if(!Engine.isWebGLAvailable()) displayFailureNotice('WebGL not available');
+			else {
+				setStatusMode('indeterminate');
+				engine.startGame({
+					'onProgress': function(current,total){
+						if(total>0){
+							statusProgressInner.style.width = current/total*100 + '%';
+							setStatusMode('progress');
+							if(current===total){ setTimeout(()=>setStatusMode('indeterminate'),500); }
+						} else setStatusMode('indeterminate');
+					}
+				}).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
+			}
+		})();
+	}
+
+	startGameWhenReady();
+})();
+//]]>
+</script>
