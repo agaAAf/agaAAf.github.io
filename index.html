@@ -185,9 +185,7 @@
 		const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
 
 		// Adjust overlay message for iOS
-		if (isIOS) {
-			overlay.textContent = "ROTATE YOUR PHONE";
-		}
+		if (isIOS) overlay.textContent = "ROTATE YOUR PHONE";
 
 		async function enterFullscreenAndLandscape() {
 			try {
@@ -208,21 +206,27 @@
 			if (isMobile) overlay.style.display = 'flex';
 
 			if (isIOS) {
-				// On iOS, wait for rotation to landscape
+				// ✅ On iOS: wait until the device is in landscape
 				const rotationPromise = new Promise(resolve => {
 					function checkOrientation() {
 						if (window.matchMedia("(orientation: landscape)").matches) {
-							window.removeEventListener('orientationchange', checkOrientation);
 							overlay.style.display = 'none';
+							window.removeEventListener('orientationchange', checkOrientation);
+							window.removeEventListener('resize', checkOrientation);
 							resolve();
 						}
 					}
-					window.addEventListener('orientationchange', checkOrientation);
+
+					// iOS may not immediately trigger orientationchange, so listen to both
+					window.addEventListener('orientationchange', () => setTimeout(checkOrientation, 300));
+					window.addEventListener('resize', () => setTimeout(checkOrientation, 300));
+
+					// Initial check (handles starting already in landscape)
 					checkOrientation();
 				});
 				await rotationPromise;
 			} else if (isMobile) {
-				// Non-iOS mobile: double tap to start
+				// ✅ Non-iOS mobile: double-tap to start
 				const startPromise = new Promise(resolve => {
 					let tapCount = 0;
 					async function clickHandler() {
@@ -243,7 +247,7 @@
 				});
 				await startPromise;
 			} else {
-				// Desktop
+				// ✅ Desktop
 				overlay.style.display = 'none';
 			}
 
@@ -251,7 +255,6 @@
 			const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":8931136,"index.wasm":13788612},"focusCanvas":true,"gdnativeLibs":[]};
 			var engine = new Engine(GODOT_CONFIG);
 
-			// Progress/status handling
 			(function() {
 				const INDETERMINATE_STATUS_STEP_MS = 100;
 				var statusProgress = document.getElementById('status-progress');
@@ -316,6 +319,7 @@
 	})();
 	//]]>
 	</script>
+
 
 </body>
 </html>
