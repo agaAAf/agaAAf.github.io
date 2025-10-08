@@ -2,13 +2,26 @@
 <html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
 <head>
 <meta charset='utf-8' />
-<meta name='viewport' content='width=device-width, user-scalable=no' />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>yksgame</title>
 <style type='text/css'>
+/* --- Prevent text selection / zoom / tap highlight --- */
+* {
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    -ms-touch-action: none;
+    touch-action: none;
+}
+
 html, body { margin:0; padding:0; height:100%; width:100%; background-color:black; overflow:hidden; }
 body { background: url("back.png") no-repeat center center; background-size: auto 100%; background-attachment: fixed; image-rendering: pixelated; }
 #canvas { display:block; margin:0; color:white; }
 #canvas:focus { outline:none; }
+
 .godot { font-family:'Noto Sans', 'Droid Sans', Arial, sans-serif; color:#e0e0e0; background-color:#3b3943; background-image: linear-gradient(to bottom,#403e48,#35333c); border:1px solid #45434e; box-shadow:0 0 1px 1px #2f2d35; }
 
 /* Status */
@@ -21,13 +34,13 @@ body { background: url("back.png") no-repeat center center; background-size: aut
 #status-notice { margin:0 100px; line-height:1.3; padding:4px 6px; visibility:visible; }
 
 /* Joystick (left) */
-#joystick-container { position:absolute; left:40px; bottom:60px; width:120px; height:120px; touch-action:none; }
+#joystick-container { position:absolute; left:40px; bottom:60px; width:120px; height:120px; }
 #joystick-base { width:100%; height:100%; background:url('joystick_base.png') no-repeat center center; background-size:contain; }
 #joystick-thumb { position:absolute; width:60px; height:60px; left:30px; top:30px; background:url('joystick_thumb.png') no-repeat center center; background-size:contain; }
 
 /* Buttons (right) */
 #buttons-container { position:absolute; right:20px; bottom:40px; width:160px; height:160px; }
-.button { position:absolute; width:60px; height:60px; background-size:contain; background-repeat:no-repeat; touch-action:none; }
+.button { position:absolute; width:60px; height:60px; background-size:contain; background-repeat:no-repeat; }
 #btn-up { top:0; left:50%; transform:translateX(-50%); }
 #btn-left { left:0; top:50%; transform:translateY(-50%); }
 #btn-right { right:0; top:50%; transform:translateY(-50%); }
@@ -70,7 +83,7 @@ body { background: url("back.png") no-repeat center center; background-size: aut
 
 <script type='text/javascript' src='index.js'></script>
 <script>
-// --- Hide controls on desktop ---
+// --- Detect mobile ---
 function isMobile() {
     return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
@@ -138,82 +151,6 @@ var engine = new Engine(GODOT_CONFIG);
         }).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
     }
 })();
-
-// --- Send Key to Godot Canvas ---
-const canvas=document.getElementById('canvas');
-function sendGodotKey(code,isDown){
-    const keyMap = { 'KeyY':'Y', 'KeyA':'A', 'KeyE':'E', 'Space':' ' };
-    const key = keyMap[code] || code;
-    const keyCode = (code==='Space')?32:key.toUpperCase().charCodeAt(0);
-    canvas.dispatchEvent(new KeyboardEvent(isDown?'keydown':'keyup',{key:key,code:code,keyCode:keyCode,which:keyCode,bubbles:true,cancelable:true}));
-}
-
-// --- Multi-touch Joystick ---
-const joystickContainer=document.getElementById('joystick-container');
-const thumb=document.getElementById('joystick-thumb');
-const joystickTouches = {};
-
-joystickContainer.addEventListener('pointerdown', e=>{
-    if (!isMobile()) return;
-    e.preventDefault();
-    joystickTouches[e.pointerId] = { startX:e.clientX, startY:e.clientY, lastKey:null };
-    thumb.style.transition='0s';
-});
-window.addEventListener('pointermove', e=>{
-    if (!isMobile() || !joystickTouches[e.pointerId]) return;
-    const jt = joystickTouches[e.pointerId];
-    const dx=e.clientX-jt.startX, dy=e.clientY-jt.startY;
-    const maxDist=50;
-    const distance=Math.min(Math.sqrt(dx*dx+dy*dy),maxDist);
-    const angle=Math.atan2(dy,dx);
-    const moveX=Math.cos(angle)*distance;
-    const moveY=Math.sin(angle)*distance;
-    thumb.style.left=`${30+moveX}px`;
-    thumb.style.top=`${30+moveY}px`;
-    let key = Math.abs(dx)>Math.abs(dy) ? (dx>0?'ArrowRight':'ArrowLeft') : (dy>0?'ArrowDown':'ArrowUp');
-    if(jt.lastKey!==key){
-        if(jt.lastKey) canvas.dispatchEvent(new KeyboardEvent('keyup',{code:jt.lastKey,bubbles:true}));
-        canvas.dispatchEvent(new KeyboardEvent('keydown',{code:key,bubbles:true}));
-        jt.lastKey=key;
-    }
-});
-window.addEventListener('pointerup', e=>{
-    if (!isMobile() || !joystickTouches[e.pointerId]) return;
-    const jt=joystickTouches[e.pointerId];
-    if(jt.lastKey) canvas.dispatchEvent(new KeyboardEvent('keyup',{code:jt.lastKey,bubbles:true}));
-    delete joystickTouches[e.pointerId];
-    thumb.style.transition='0.2s';
-    thumb.style.left='30px';
-    thumb.style.top='30px';
-});
-
-// --- Multi-touch Buttons ---
-document.querySelectorAll('.button').forEach(btn=>{
-    const code=btn.dataset.key;
-    const keyMap = { 'KeyY': {key:'y',keyCode:89}, 'KeyA':{key:'a',keyCode:65}, 'KeyE':{key:'e',keyCode:69}, 'Space':{key:' ',keyCode:32} };
-    const mapping=keyMap[code];
-    const activeTouches = {};
-
-    btn.addEventListener('pointerdown', e=>{
-        if (!isMobile()) return;
-        e.preventDefault();
-        if(activeTouches[e.pointerId]) return;
-        activeTouches[e.pointerId]=true;
-        btn.style.filter='brightness(0.6)';
-        canvas.dispatchEvent(new KeyboardEvent('keydown',{key:mapping.key,code:code,keyCode:mapping.keyCode,which:mapping.keyCode,bubbles:true}));
-    });
-
-    function releaseTouch(e){
-        if(!activeTouches[e.pointerId]) return;
-        delete activeTouches[e.pointerId];
-        if(Object.keys(activeTouches).length===0) btn.style.filter='brightness(1)';
-        canvas.dispatchEvent(new KeyboardEvent('keyup',{key:mapping.key,code:code,keyCode:mapping.keyCode,which:mapping.keyCode,bubbles:true}));
-    }
-
-    btn.addEventListener('pointerup', releaseTouch);
-    btn.addEventListener('pointercancel', releaseTouch);
-    btn.addEventListener('pointerleave', releaseTouch);
-});
 </script>
 </body>
 </html>
