@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
+<head>
+<meta charset='utf-8' />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>yksgame</title>
+<style type='text/css'>
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    background-color: black;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
+    -ms-touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: none; /* prevent font scaling */
+    touch-action: manipulation; /* prevent zoom/pan gestures */
+}
+body {
+    background: url("back.png") no-repeat center center;
+    background-size: auto 100%;
+    background-attachment: fixed;
+    image-rendering: pixelated;
+}
+canvas, #canvas {
+    display: block;
+    margin: 0;
+    color: white;
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: none;
+    touch-action: manipulation;
+}
+#canvas:focus { outline: none; }
+
+.godot {
+    font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+    color: #e0e0e0;
+    background-color: #3b3943;
+    background-image: linear-gradient(to bottom, #403e48, #35333c);
+    border: 1px solid #45434e;
+    box-shadow: 0 0 1px 1px #2f2d35;
+}
+
+/* Status */
+#status {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    display: flex; justify-content: center; align-items: center;
+    visibility: hidden;
+}
+#status-progress {
+    width: 366px; height: 7px;
+    background-color: #111; border: 1px solid #444;
+    padding: 1px; box-shadow: 0 0 8px #39ff14;
+    border-radius: 4px; visibility: visible;
+    position: absolute; bottom: 50px; left: 50%;
+    transform: translateX(-50%);
+}
+@media only screen and (orientation: portrait) {
+    #status-progress { width: 61.8%; }
+}
+#status-progress-inner {
+    height: 100%; width: 0;
+    box-sizing: border-box;
+    transition: width 0.5s linear;
+    background-color: #39ff14;
+    box-shadow: 0 0 10px #39ff14;
+    border-radius: 3px;
+}
+#status-indeterminate {
+    height: 42px; visibility: visible; position: relative;
+}
+#status-indeterminate > div {
+    width: 4.5px; height: 0;
+    border-style: solid;
+    border-width: 9px 3px 0 3px;
+    border-color: #2b2b2b transparent transparent transparent;
+    transform-origin: center 21px;
+    position: absolute;
+}
+#status-notice {
+    margin: 0 100px;
+    line-height: 1.3;
+    padding: 4px 6px;
+    visibility: visible;
+}
+
+/* Joystick */
+#joystick-container {
+    position: fixed;
+    left: 40px; bottom: 60px;
+    width: 120px; height: 120px;
+    touch-action: none;
+}
+#joystick-base {
+    width: 100%; height: 100%;
+    background: url('joystick_base.png') no-repeat center center;
+    background-size: contain;
+}
+#joystick-thumb {
+    position: absolute;
+    width: 60px; height: 60px;
+    left: 30px; top: 30px;
+    background: url('joystick_thumb.png') no-repeat center center;
+    background-size: contain;
+}
+
+/* Buttons */
+#buttons-container {
+    position: fixed;
+    right: 20px; bottom: 40px;
+    width: 160px; height: 160px;
+}
+.button {
+    position: absolute;
+    width: 60px; height: 60px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    touch-action: none;
+}
+#btn-up { top: 0; left: 50%; transform: translateX(-50%); }
+#btn-left { left: 0; top: 50%; transform: translateY(-50%); }
+#btn-right { right: 0; top: 50%; transform: translateY(-50%); }
+#btn-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+
+/* Hide controls on desktop */
+.hide-controls { display: none !important; }
+</style>
+
+<link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
+<link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
+</head>
+<body>
+<canvas id='canvas'>HTML5 canvas unsupported</canvas>
+
+<div id='status'>
+    <div id='status-progress' style='display:none;' oncontextmenu='event.preventDefault();'>
+        <div id='status-progress-inner'></div>
+    </div>
+    <div id='status-indeterminate' style='display:none;' oncontextmenu='event.preventDefault();'>
+        <div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div>
+    </div>
+    <div id='status-notice' class='godot' style='display:none;'></div>
+</div>
+
+<div id="joystick-container">
+    <div id="joystick-base"></div>
+    <div id="joystick-thumb"></div>
+</div>
+
+<div id="buttons-container">
+    <div id="btn-up" class="button" data-key="KeyY" style="background-image:url('btn_up.png');"></div>
+    <div id="btn-left" class="button" data-key="KeyA" style="background-image:url('btn_left.png');"></div>
+    <div id="btn-right" class="button" data-key="KeyE" style="background-image:url('btn_right.png');"></div>
+    <div id="btn-down" class="button" data-key="Space" style="background-image:url('btn_down.png');"></div>
+</div>
+
+<script type='text/javascript' src='index.js'></script>
+<script>
+// --- Hide controls on desktop ---
+function isMobile() {
+    return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+if (!isMobile()) {
+    document.getElementById('joystick-container').classList.add('hide-controls');
+    document.getElementById('buttons-container').classList.add('hide-controls');
+}
+
+// --- Fully prevent zooming and scaling on iOS Safari ---
+(function() {
+    let lastTouchEnd = 0;
+
+    document.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) e.preventDefault(); // Prevent pinch zoom
+    }, { passive: false });
+
+    document.addEventListener('touchend', function(e) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) e.preventDefault(); // Prevent double-tap zoom
+        lastTouchEnd = now;
+    }, { passive: false });
+
+    // Disable dblclick zooms
+    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+    // Ensure touch-action consistency
+    document.querySelectorAll('body, html, canvas, button, .button').forEach(el => {
+        el.style.touchAction = 'manipulation';
+    });
+})();
+
+// --- Prevent pinch gestures ---
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+// --- Godot Initialization ---
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":2887136,"index.wasm":17860295},"focusCanvas":true,"gdnativeLibs":[]};
+var engine = new Engine(GODOT_CONFIG);
+
+(function(){
+    const INDETERMINATE_STATUS_STEP_MS = 100;
+    var statusProgress=document.getElementById('status-progress');
+    var statusProgressInner=document.getElementById('status-progress-inner');
+    var statusIndeterminate=document.getElementById('status-indeterminate');
+    var statusNotice=document.getElementById('status-notice');
+    var initializing=true;
+    var statusMode='hidden';
+    var animationCallbacks=[];
+    function animate(time){ animationCallbacks.forEach(cb=>cb(time)); requestAnimationFrame(animate); }
+    requestAnimationFrame(animate);
+
+    function setStatusMode(mode){
+        if(statusMode===mode || !initializing) return;
+        [statusProgress,statusIndeterminate,statusNotice].forEach(e=>e.style.display='none');
+        animationCallbacks=animationCallbacks.filter(v=>v!=animateStatusIndeterminate);
+        switch(mode){
+            case 'progress': statusProgress.style.display='block'; break;
+            case 'indeterminate': statusIndeterminate.style.display='block'; animationCallbacks.push(animateStatusIndeterminate); break;
+            case 'notice': statusNotice.style.display='block'; break;
+            case 'hidden': break;
+        }
+        statusMode=mode;
+    }
+
+    function animateStatusIndeterminate(ms){
+        var i=Math.floor(ms/INDETERMINATE_STATUS_STEP_MS%8);
+        if(statusIndeterminate.children[i].style.borderTopColor==''){
+            Array.from(statusIndeterminate.children).forEach(c=>c.style.borderTopColor='');
+            statusIndeterminate.children[i].style.borderTopColor='#dfdfdf';
+        }
+    }
+
+    function displayFailureNotice(err){
+        var msg=err.message||err;
+        console.error(msg);
+        statusNotice.textContent = msg;
+        setStatusMode('notice');
+        initializing=false;
+    }
+
+    if(!Engine.isWebGLAvailable()){ displayFailureNotice('WebGL not available'); }
+    else{
+        setStatusMode('indeterminate');
+        engine.startGame({
+            'onProgress': function(current,total){
+                if(total>0){
+                    statusProgressInner.style.width=current/total*100+'%';
+                    setStatusMode('progress');
+                    if(current===total) setTimeout(()=>{ setStatusMode('indeterminate'); },500);
+                } else setStatusMode('indeterminate');
+            },
+        }).then(()=>{ setStatusMode('hidden'); initializing=false; }, displayFailureNotice);
+    }
+})();
+
+// --- Joystick and Button logic (unchanged) ---
+const canvas=document.getElementById('canvas');
+const joystickContainer=document.getElementById('joystick-container');
+const thumb=document.getElementById('joystick-thumb');
+const joystickTouches = {};
+
+joystickContainer.addEventListener('pointerdown', e=>{
+    if (!isMobile()) return;
+    e.preventDefault();
+    joystickTouches[e.pointerId] = { startX:e.clientX, startY:e.clientY, lastKey:null };
+    thumb.style.transition='0s';
+});
+window.addEventListener('pointermove', e=>{
+    if (!isMobile() || !joystickTouches[e.pointerId]) return;
+    const jt = joystickTouches[e.pointerId];
+    const dx=e.clientX-jt.startX, dy=e.clientY-jt.startY;
+    const maxDist=50;
+    const distance=Math.min(Math.sqrt(dx*dx+dy*dy),maxDist);
+    const angle=Math.atan2(dy,dx);
+    const moveX=Math.cos(angle)*distance;
+    const moveY=Math.sin(angle)*distance;
+    thumb.style.left=`${30+moveX}px`;
+    thumb.style.top=`${30+moveY}px`;
+    let key = Math.abs(dx)>Math.abs(dy) ? (dx>0?'ArrowRight':'ArrowLeft') : (dy>0?'ArrowDown':'ArrowUp');
+    if(jt.lastKey!==key){
+        if(jt.lastKey) canvas.dispatchEvent(new KeyboardEvent('keyup',{code:jt.lastKey,bubbles:true}));
+        canvas.dispatchEvent(new KeyboardEvent('keydown',{code:key,bubbles:true}));
+        jt.lastKey=key;
+    }
+});
+window.addEventListener('pointerup', e=>{
+    if (!isMobile() || !joystickTouches[e.pointerId]) return;
+    const jt=joystickTouches[e.pointerId];
+    if(jt.lastKey) canvas.dispatchEvent(new KeyboardEvent('keyup',{code:jt.lastKey,bubbles:true}));
+    delete joystickTouches[e.pointerId];
+    thumb.style.transition='0.2s';
+    thumb.style.left='30px';
+    thumb.style.top='30px';
+});
+
+document.querySelectorAll('.button').forEach(btn=>{
+    const code=btn.dataset.key;
+    const keyMap = { 'KeyY': {key:'y',keyCode:89}, 'KeyA':{key:'a',keyCode:65}, 'KeyE':{key:'e',keyCode:69}, 'Space':{key:' ',keyCode:32} };
+    const mapping=keyMap[code];
+    const activeTouches = {};
+
+    btn.addEventListener('pointerdown', e=>{
+        if (!isMobile()) return;
+        e.preventDefault();
+        if(activeTouches[e.pointerId]) return;
+        activeTouches[e.pointerId]=true;
+        btn.style.filter='brightness(0.6)';
+        canvas.dispatchEvent(new KeyboardEvent('keydown',{key:mapping.key,code:code,keyCode:mapping.keyCode,which:mapping.keyCode,bubbles:true}));
+    });
+
+    function releaseTouch(e){
+        if(!activeTouches[e.pointerId]) return;
+        delete activeTouches[e.pointerId];
+        if(Object.keys(activeTouches).length===0) btn.style.filter='brightness(1)';
+        canvas.dispatchEvent(new KeyboardEvent('keyup',{key:mapping.key,code:code,keyCode:mapping.keyCode,which:mapping.keyCode,bubbles:true}));
+    }
+
+    btn.addEventListener('pointerup', releaseTouch);
+    btn.addEventListener('pointercancel', releaseTouch);
+    btn.addEventListener('pointerleave', releaseTouch);
+});
+</script>
+</body>
+</html>
