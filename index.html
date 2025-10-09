@@ -2,16 +2,23 @@
 <html xmlns='http://www.w3.org/1999/xhtml' lang='' xml:lang=''>
 <head>
 <meta charset='utf-8' />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>yksgame</title>
 <style type='text/css'>
 html, body {
-    margin:0; padding:0; height:100%; width:100%; background-color:black;
-    overflow:hidden;
-    touch-action: none; /* prevent pinch/zoom/scroll */
-    -webkit-user-select: none; /* prevent text selection */
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    background-color: black;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-user-select: none;
     -ms-touch-action: none;
     user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: none; /* prevent font scaling */
+    touch-action: manipulation; /* prevent zoom/pan gestures */
 }
 body {
     background: url("back.png") no-repeat center center;
@@ -19,42 +26,116 @@ body {
     background-attachment: fixed;
     image-rendering: pixelated;
 }
-#canvas { display:block; margin:0; color:white; }
-#canvas:focus { outline:none; }
-.godot { font-family:'Noto Sans', 'Droid Sans', Arial, sans-serif; color:#e0e0e0; background-color:#3b3943; background-image: linear-gradient(to bottom,#403e48,#35333c); border:1px solid #45434e; box-shadow:0 0 1px 1px #2f2d35; }
+canvas, #canvas {
+    display: block;
+    margin: 0;
+    color: white;
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: none;
+    touch-action: manipulation;
+}
+#canvas:focus { outline: none; }
+
+.godot {
+    font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+    color: #e0e0e0;
+    background-color: #3b3943;
+    background-image: linear-gradient(to bottom, #403e48, #35333c);
+    border: 1px solid #45434e;
+    box-shadow: 0 0 1px 1px #2f2d35;
+}
 
 /* Status */
-#status { position:absolute; left:0;top:0;right:0;bottom:0; display:flex; justify-content:center; align-items:center; visibility:hidden; }
-#status-progress { width:366px; height:7px; background-color:#111; border:1px solid #444; padding:1px; box-shadow:0 0 8px #39ff14; border-radius:4px; visibility:visible; position:absolute; bottom:50px; left:50%; transform:translateX(-50%); }
-@media only screen and (orientation:portrait){ #status-progress{width:61.8%;} }
-#status-progress-inner { height:100%; width:0; box-sizing:border-box; transition: width 0.5s linear; background-color:#39ff14; box-shadow:0 0 10px #39ff14; border-radius:3px; }
-#status-indeterminate { height:42px; visibility:visible; position:relative; }
-#status-indeterminate > div { width:4.5px; height:0; border-style:solid; border-width:9px 3px 0 3px; border-color:#2b2b2b transparent transparent transparent; transform-origin:center 21px; position:absolute; }
-#status-notice { margin:0 100px; line-height:1.3; padding:4px 6px; visibility:visible; }
+#status {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    display: flex; justify-content: center; align-items: center;
+    visibility: hidden;
+}
+#status-progress {
+    width: 366px; height: 7px;
+    background-color: #111; border: 1px solid #444;
+    padding: 1px; box-shadow: 0 0 8px #39ff14;
+    border-radius: 4px; visibility: visible;
+    position: absolute; bottom: 50px; left: 50%;
+    transform: translateX(-50%);
+}
+@media only screen and (orientation: portrait) {
+    #status-progress { width: 61.8%; }
+}
+#status-progress-inner {
+    height: 100%; width: 0;
+    box-sizing: border-box;
+    transition: width 0.5s linear;
+    background-color: #39ff14;
+    box-shadow: 0 0 10px #39ff14;
+    border-radius: 3px;
+}
+#status-indeterminate {
+    height: 42px; visibility: visible; position: relative;
+}
+#status-indeterminate > div {
+    width: 4.5px; height: 0;
+    border-style: solid;
+    border-width: 9px 3px 0 3px;
+    border-color: #2b2b2b transparent transparent transparent;
+    transform-origin: center 21px;
+    position: absolute;
+}
+#status-notice {
+    margin: 0 100px;
+    line-height: 1.3;
+    padding: 4px 6px;
+    visibility: visible;
+}
 
-/* Joystick (left) */
-#joystick-container { position: fixed; left:40px; bottom:60px; width:120px; height:120px; touch-action:none; }
-#joystick-base { width:100%; height:100%; background:url('joystick_base.png') no-repeat center center; background-size:contain; }
-#joystick-thumb { position:absolute; width:60px; height:60px; left:30px; top:30px; background:url('joystick_thumb.png') no-repeat center center; background-size:contain; }
+/* Joystick */
+#joystick-container {
+    position: fixed;
+    left: 40px; bottom: 60px;
+    width: 120px; height: 120px;
+    touch-action: none;
+}
+#joystick-base {
+    width: 100%; height: 100%;
+    background: url('joystick_base.png') no-repeat center center;
+    background-size: contain;
+}
+#joystick-thumb {
+    position: absolute;
+    width: 60px; height: 60px;
+    left: 30px; top: 30px;
+    background: url('joystick_thumb.png') no-repeat center center;
+    background-size: contain;
+}
 
-/* Buttons (right) */
-#buttons-container { position: fixed; right:20px; bottom:40px; width:160px; height:160px; }
-.button { position:absolute; width:60px; height:60px; background-size:contain; background-repeat:no-repeat; touch-action:none; }
-#btn-up { top:0; left:50%; transform:translateX(-50%); }
-#btn-left { left:0; top:50%; transform:translateY(-50%); }
-#btn-right { right:0; top:50%; transform:translateY(-50%); }
-#btn-down { bottom:0; left:50%; transform:translateX(-50%); }
+/* Buttons */
+#buttons-container {
+    position: fixed;
+    right: 20px; bottom: 40px;
+    width: 160px; height: 160px;
+}
+.button {
+    position: absolute;
+    width: 60px; height: 60px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    touch-action: none;
+}
+#btn-up { top: 0; left: 50%; transform: translateX(-50%); }
+#btn-left { left: 0; top: 50%; transform: translateY(-50%); }
+#btn-right { right: 0; top: 50%; transform: translateY(-50%); }
+#btn-down { bottom: 0; left: 50%; transform: translateX(-50%); }
 
 /* Hide controls on desktop */
 .hide-controls { display: none !important; }
 </style>
+
 <link id='-gd-engine-icon' rel='icon' type='image/png' href='index.icon.png' />
 <link rel='apple-touch-icon' href='index.apple-touch-icon.png'/>
 </head>
 <body>
 <canvas id='canvas'>HTML5 canvas unsupported</canvas>
 
-<!-- Godot Status -->
 <div id='status'>
     <div id='status-progress' style='display:none;' oncontextmenu='event.preventDefault();'>
         <div id='status-progress-inner'></div>
@@ -66,13 +147,11 @@ body {
     <div id='status-notice' class='godot' style='display:none;'></div>
 </div>
 
-<!-- Joystick -->
 <div id="joystick-container">
     <div id="joystick-base"></div>
     <div id="joystick-thumb"></div>
 </div>
 
-<!-- Diamond Buttons -->
 <div id="buttons-container">
     <div id="btn-up" class="button" data-key="KeyY" style="background-image:url('btn_up.png');"></div>
     <div id="btn-left" class="button" data-key="KeyA" style="background-image:url('btn_left.png');"></div>
@@ -91,17 +170,30 @@ if (!isMobile()) {
     document.getElementById('buttons-container').classList.add('hide-controls');
 }
 
-// --- Prevent double-tap zoom on Safari ---
-let lastTouch = 0;
-document.addEventListener('touchend', function(e) {
-    const now = Date.now();
-    if (now - lastTouch <= 300) { // double-tap
-        e.preventDefault();
-    }
-    lastTouch = now;
-}, { passive: false });
+// --- Fully prevent zooming and scaling on iOS Safari ---
+(function() {
+    let lastTouchEnd = 0;
 
-// --- Prevent pinch-zoom gestures ---
+    document.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) e.preventDefault(); // Prevent pinch zoom
+    }, { passive: false });
+
+    document.addEventListener('touchend', function(e) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) e.preventDefault(); // Prevent double-tap zoom
+        lastTouchEnd = now;
+    }, { passive: false });
+
+    // Disable dblclick zooms
+    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+    // Ensure touch-action consistency
+    document.querySelectorAll('body, html, canvas, button, .button').forEach(el => {
+        el.style.touchAction = 'manipulation';
+    });
+})();
+
+// --- Prevent pinch gestures ---
 document.addEventListener('gesturestart', e => e.preventDefault());
 
 // --- Godot Initialization ---
@@ -164,7 +256,7 @@ var engine = new Engine(GODOT_CONFIG);
     }
 })();
 
-// --- Multi-touch Joystick & Buttons ---
+// --- Joystick and Button logic (unchanged) ---
 const canvas=document.getElementById('canvas');
 const joystickContainer=document.getElementById('joystick-container');
 const thumb=document.getElementById('joystick-thumb');
